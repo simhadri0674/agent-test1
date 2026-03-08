@@ -3,56 +3,69 @@ import boto3
 import json
 import uuid
 
-# --- CONFIG ---
-# Ensure the ARN is the FULL resource name
+# --- AWS CONFIGURATION ---
+# Based on your previous logs: ap-south-1 (Mumbai)
 AGENT_ARN = "arn:aws:bedrock-agentcore:ap-south-1:481048082409:runtime/langagent-FgVlZkDs5k"
 ACCOUNT_ID = "481048082409"
 
-st.set_page_config(page_title="Lauki Assistant", page_icon="🥒")
+st.set_page_config(page_title="Lauki FAQ Assistant", page_icon="🥒")
 
+# 1. Initialize Session (AgentCore uses session_id for memory/traces)
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 st.title("🥒 Lauki FAQ Assistant")
 
-if prompt := st.chat_input("Ask about Lauki..."):
+# Display Chat History
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# 2. User Input
+if prompt := st.chat_input("Ask me anything about Lauki..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         try:
+            # Initialize the specific AgentCore runtime client
             client = boto3.client("bedrock-agentcore", region_name="ap-south-1")
             
-            # --- THE PAYLOAD ---
-            # Construct the exact dictionary your agent handler expects
-            input_body = {"prompt": prompt} 
-            
-            # Encode it directly inside the call variable to be safe
-            raw_payload = json.dumps(input_body).encode('utf-8')
+            # THE CRITICAL FIX: Encode your JSON prompt into BYTES
+            # Your backend handles: payload.get("input", {}).get("prompt")
+            payload_data = {"input": {"prompt": prompt}}
+            binary_payload = json.dumps(payload_data).encode('utf-8')
 
             response = client.invoke_agent_runtime(
                 agentRuntimeArn=AGENT_ARN,
                 #accountId=ACCOUNT_ID,
                 qualifier="DEFAULT",
                 runtimeSessionId=st.session_state.session_id,
-                payload=raw_payload, # THIS MUST BE BYTES
+                payload=binary_payload,  # Sending Bytes
                 contentType="application/json",
                 accept="application/json"
             )
 
-            # --- THE STREAM ---
+            # 3. Handle Binary Streaming Response
             full_text = ""
             placeholder = st.empty()
             
-            # response['response'] is an EventStream
+            # AgentCore 2026 returns a 'response' EventStream
             for event in response.get('response'):
                 if 'chunk' in event:
-                    # Bytes must be decoded back to string for Streamlit
-                    chunk_text = event['chunk']['bytes'].decode('utf-8')
-                    full_text += chunk_text
+                    # Chunks are binary, decode to UTF-8 for the UI
+                    text_chunk = event['chunk']['bytes'].decode('utf-8')
+                    full_text += text_chunk
                     placeholder.markdown(full_text + "▌")
             
             placeholder.markdown(full_text)
+            st.session_state.messages.append({"role": "assistant", "content": full_text})
 
         except Exception as e:
-            st.error(f"Cloud Error: {str(e)}")
+            st.error(f"Error connecting to Lauki Agent: {e}")
+            # Diagnostic for Cloud deployment:
+            st.info(f"Boto3 Version: {boto3.__version__}")
