@@ -57,7 +57,7 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
             
             response = client.invoke_agent_runtime(
                 agentRuntimeArn=AGENT_ARN,
-                accountId=AWS_ACCOUNT_ID,
+                #accountId=AWS_ACCOUNT_ID,
                 qualifier="DEFAULT",
                 runtimeSessionId=st.session_state.session_id,
                 payload=payload_bytes,  # Pass the bytes here
