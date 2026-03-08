@@ -39,12 +39,14 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
             )
             
             # Handle streaming response
-            full_response = ""
-            for event in response.get("completion"):
-                full_response += event["chunk"]["bytes"].decode("utf-8")
+            #full_response = ""
+            full_text = ""
+            for event in response.get('response'):
+                if 'chunk' in event:
+                    full_text += event['chunk']['bytes'].decode('utf-8')
             
-            st.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
+            st.markdown(full_text)
+            st.session_state.messages.append({"role": "assistant", "content": full_text})
             
         except Exception as e:
             st.error(f"Error calling agent: {e}")
