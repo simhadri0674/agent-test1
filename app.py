@@ -35,6 +35,8 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
         st.markdown(prompt)
 
     # Call AWS Bedrock AgentCore
+    # 1. Add your 12-digit AWS Account ID here
+    AWS_ACCOUNT_ID = "481048082409"
     with st.chat_message("assistant"):
         try:
             client = boto3.client("bedrock-agentcore", region_name="ap-south-1")
@@ -42,6 +44,7 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
             # AgentCore 2026 Payload structure
             response = client.invoke_agent_runtime(
             agentRuntimeArn=AGENT_ARN.split('/')[-1],
+            accountId=AWS_ACCOUNT_ID,
             qualifier="DEFAULT",
             runtimeSessionId=st.session_state.session_id,
             payload=json.dumps({"input": {"prompt": prompt}}).encode('utf-8'),
