@@ -1,86 +1,81 @@
 import streamlit as st
 import boto3
 import json
-import uuid  # Standard library to generate unique IDs
+import uuid
 
-# --- INITIALIZATION BLOCK ---
-# This checks if "session_id" exists; if not, it creates it.
-if "session_id" not in st.session_state:
-    # uuid.uuid4() creates a 36-character random string
-    # This perfectly satisfies the Bedrock AgentCore 33-char minimum.
-    st.session_state.session_id = str(uuid.uuid4())
-# ----------------------------
-
-st.title("My Agent App")
-# Now you can safely use st.session_state.session_id anywhere below. 
-# Replace with your actual ARN from the deployment step
+# --- CONFIGURATION ---
+# Ensure these values are correct for your ap-south-1 deployment
 AGENT_ARN = "arn:aws:bedrock-agentcore:ap-south-1:481048082409:runtime/langagent-FgVlZkDs5k"
+AWS_ACCOUNT_ID = "481048082409"
+REGION = "ap-south-1"
 
-st.set_page_config(page_title="Lauki FAQ Assistant", page_icon="🥒")
-st.title("🥒 Lauki FAQ Assistant")
+st.set_page_config(page_title="Lauki FAQ Assistant", page_icon="🥒", layout="centered")
 
-# Initialize Session State for Chat
+# --- 1. SESSION INITIALIZATION ---
+# AgentCore 2026 requires a runtimeSessionId of at least 33 characters.
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4()) # 36 chars
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display Chat History
+st.title("🥒 Lauki FAQ Assistant")
+st.caption("Powered by AWS Bedrock AgentCore")
+
+# --- 2. DISPLAY CHAT HISTORY ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# User Input
+# --- 3. USER INPUT & AGENT INVOCATION ---
 if prompt := st.chat_input("Ask me anything about Lauki..."):
+    # Add user message to UI
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Call AWS Bedrock AgentCore
-    # 1. Add your 12-digit AWS Account ID here
-    AWS_ACCOUNT_ID = "481048082409"
     with st.chat_message("assistant"):
         try:
-            client = boto3.client("bedrock-agentcore", region_name="ap-south-1")
+            # Initialize client
+            client = boto3.client("bedrock-agentcore", region_name=REGION)
             
-            # AgentCore 2026 Payload structure
-            # response = client.invoke_agent_runtime(
-            # agentRuntimeArn=AGENT_ARN.split('/')[-1],
-            # accountId=AWS_ACCOUNT_ID,
-            # qualifier="DEFAULT",
-            # runtimeSessionId=st.session_state.session_id,
-            # payload=json.dumps({"input": {"prompt": prompt}}).encode('utf-8'),
-            # contentType="application/json",
-            # accept="application/json"
-            # )
-            # Convert the dictionary to a JSON string, then encode that string to BYTES
-            input_data = {
-                "input": {
-                    "prompt": prompt
-                }
-            }
-            
-            # 2. Convert to JSON string, then to BYTES (UTF-8)
-            # This is the line that fixes your current error
-            payload_bytes = json.dumps(input_data).encode('utf-8')
-            
+            # Prepare the payload strictly as bytes
+            # AgentCore 2026 expects the "input" -> "prompt" wrapper
+            body = {"input": {"prompt": prompt}}
+            payload_json = json.dumps(body)
+            payload_bytes = payload_json.encode('utf-8')
+
+            # The API call
+            # Note: accountId is optional if included in ARN, but good for validation
             response = client.invoke_agent_runtime(
                 agentRuntimeArn=AGENT_ARN,
                 #accountId=AWS_ACCOUNT_ID,
                 qualifier="DEFAULT",
                 runtimeSessionId=st.session_state.session_id,
-                payload=payload_bytes,  # Pass the bytes here
+                payload=payload_bytes,
                 contentType="application/json",
                 accept="application/json"
             )
             
-            # Handle streaming response
-            #full_response = ""
+            # --- 4. STREAMING RESPONSE PROCESSING ---
             full_text = ""
+            placeholder = st.empty() # For typing effect
+            
+            # The 'response' key contains a StreamingBody/EventStream
             for event in response.get('response'):
                 if 'chunk' in event:
-                    full_text += event['chunk']['bytes'].decode('utf-8')
+                    # Chunks also arrive as bytes; decode them for Streamlit
+                    chunk_bytes = event['chunk']['bytes']
+                    decoded_chunk = chunk_bytes.decode('utf-8')
+                    full_text += decoded_chunk
+                    placeholder.markdown(full_text + "▌")
             
-            st.markdown(full_text)
+            # Finalize assistant message
+            placeholder.markdown(full_text)
             st.session_state.messages.append({"role": "assistant", "content": full_text})
             
         except Exception as e:
-            st.error(f"Error calling agent: {e}")
+            st.error(f"Error calling agent: {str(e)}")
+            # Helpful tip if bytes error still occurs:
+            if "bytes-like object" in str(e):
+                st.warning("SDK Validation Failed: Ensure your boto3 version is 1.40.0+")
