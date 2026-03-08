@@ -30,7 +30,7 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
             
             # AgentCore 2026 Payload structure
             response = client.invoke_agent_runtime(
-            agentRuntimeArn=agent_arn,
+            agentRuntimeArn=AGENT_ARN.split('/')[-1],
             qualifier="DEFAULT",
             runtimeSessionId="streamlit-session-001",
             payload=json.dumps({"input": {"prompt": prompt}}).encode('utf-8'),
