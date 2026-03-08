@@ -1,7 +1,18 @@
 import streamlit as st
 import boto3
 import json
+import uuid  # Standard library to generate unique IDs
 
+# --- INITIALIZATION BLOCK ---
+# This checks if "session_id" exists; if not, it creates it.
+if "session_id" not in st.session_state:
+    # uuid.uuid4() creates a 36-character random string
+    # This perfectly satisfies the Bedrock AgentCore 33-char minimum.
+    st.session_state.session_id = str(uuid.uuid4())
+# ----------------------------
+
+st.title("My Agent App")
+# Now you can safely use st.session_state.session_id anywhere below. 
 # Replace with your actual ARN from the deployment step
 AGENT_ARN = "arn:aws:bedrock-agentcore:ap-south-1:481048082409:runtime/langagent-FgVlZkDs5k"
 
