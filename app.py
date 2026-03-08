@@ -26,7 +26,7 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
     # Call AWS Bedrock AgentCore
     with st.chat_message("assistant"):
         try:
-            client = boto3.client("bedrock-agent-runtime", region_name="ap-south-1")
+            client = boto3.client("bedrock-agentcore", region_name="ap-south-1")
             
             # AgentCore 2026 Payload structure
             response = client.invoke_agent(
