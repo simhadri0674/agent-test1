@@ -29,11 +29,13 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
             client = boto3.client("bedrock-agentcore", region_name="ap-south-1")
             
             # AgentCore 2026 Payload structure
-            response = client.invoke_agent(
-                agentId=AGENT_ARN.split('/')[-1],
-                agentAliasId="DEFAULT",
-                sessionId="streamlit-session-1",
-                inputText=prompt
+            response = client.invoke_agent_runtime(
+            agentRuntimeArn=agent_arn,
+            qualifier="DEFAULT",
+            runtimeSessionId="streamlit-session-001",
+            payload=json.dumps({"input": {"prompt": prompt}}).encode('utf-8'),
+            contentType="application/json",
+            accept="application/json"
             )
             
             # Handle streaming response
