@@ -52,8 +52,15 @@ if prompt := st.chat_input("Ask me anything about Lauki..."):
             # accept="application/json"
             # )
             # Convert the dictionary to a JSON string, then encode that string to BYTES
-            payload_json = json.dumps({"input": {"prompt": prompt}})
-            payload_bytes = payload_json.encode('utf-8') # <--- This is the critical step
+            input_data = {
+                "input": {
+                    "prompt": prompt
+                }
+            }
+            
+            # 2. Convert to JSON string, then to BYTES (UTF-8)
+            # This is the line that fixes your current error
+            payload_bytes = json.dumps(input_data).encode('utf-8')
             
             response = client.invoke_agent_runtime(
                 agentRuntimeArn=AGENT_ARN,
