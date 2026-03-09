@@ -5,7 +5,7 @@ import uuid
 
 # --- CONFIGURATION ---
 # Your specific AgentCore Runtime ARN
-AGENT_RUNTIME_ARN = "arn:aws:bedrock-agentcore:ap-south-1:481048082409:runtime/HRAgent-za7ytMAMfI"
+AGENT_RUNTIME_ARN = "arn:aws:bedrock-agentcore:ap-south-1:481048082409:runtime/HRhelper-3NTnqJGe6x"
 REGION = "ap-south-1"
 
 st.set_page_config(page_title="Tachyon HR Assistant", page_icon="🏢")
